@@ -114,7 +114,7 @@ def extract_min_salary(salary_str):
 
 # --- UI Layout Configuration ---
 
-st.set_page_config(page_title="CJP Job Pipeline", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Linked In Job Search", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
@@ -182,7 +182,7 @@ def check_password():
 if check_password():
 
     # High-Impact Branding Headers
-    st.markdown("<h1 style='color: #ffffff; font-weight: 900; font-size: 2.5rem; margin-bottom: 0px;'>🪳 CJP JOB PIPELINE</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color: #ffffff; font-weight: 900; font-size: 2.5rem; margin-bottom: 0px;'>Linked In Job Search</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: #ff9933; font-weight: bold; font-size: 1.1rem; margin-top: 5px; margin-bottom: 20px;'>Voice of the Lazy & Unemployed — Searching Smarter.</p>", unsafe_allow_html=True)
     st.write("---")
 
