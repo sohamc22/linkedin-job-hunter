@@ -2,18 +2,16 @@ import os
 import subprocess
 import streamlit as st
 
-# --- CLOUD INITIALIZATION: Auto-installs browser binaries on Streamlit Cloud Linux servers ---
+# --- CLOUD INITIALIZATION ---
 @st.cache_resource
 def initialize_cloud_browsers():
     try:
-        # Detect if the app is executing inside the Streamlit Cloud Linux environment
         if os.environ.get("STREAMLIT_SERVER_PORT") or os.path.exists("/home/adminuser"):
             subprocess.run(["playwright", "install", "chromium"], check=True)
             subprocess.run(["playwright", "install-deps"], check=True)
     except Exception as e:
         pass
 
-# Fire browser engine compiler configuration
 initialize_cloud_browsers()
 
 # --- Core Dependencies ---
@@ -25,26 +23,27 @@ from bs4 import BeautifulSoup
 
 # --- Helper Functions ---
 
-def scrape_linkedin_jobs(query, location):
-    """Scrapes an extended list of public LinkedIn jobs by deep scrolling and clicking load buttons."""
+def scrape_linkedin_jobs(query, location, force_remote=False):
     jobs = []
-    url = f"https://www.linkedin.com/jobs/search?keywords={query.replace(' ', '%20')}&location={location.replace(' ', '%20')}"
+    
+    # If the user checked "Remote", we append it straight to the main search string to help LinkedIn filter early
+    final_query = query
+    if force_remote and "remote" not in query.lower():
+        final_query += " remote"
+        
+    url = f"https://www.linkedin.com/jobs/search?keywords={final_query.replace(' ', '%20')}&location={location.replace(' ', '%20')}"
     
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1"
         )
         page = context.new_page()
         try:
             page.goto(url, timeout=45000)
-            
-            # --- EXTENDED SCROLLING LOGIC ---
-            for i in range(6): 
+            for i in range(5): 
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(2) 
-                
-                # Automatically clicks the public infinite scroll page button
                 try:
                     see_more_button = page.locator("button.infinite-scroller__button")
                     if see_more_button.is_visible():
@@ -52,7 +51,6 @@ def scrape_linkedin_jobs(query, location):
                         time.sleep(2)
                 except:
                     pass 
-                    
             html = page.content()
         except Exception as e:
             html = ""
@@ -92,22 +90,18 @@ def scrape_linkedin_jobs(query, location):
     return jobs
 
 def scrape_job_description(job_url):
-    """Navigates to an individual job link to pull the full description."""
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(headless=True)
-            context = browser.new_context(user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+            context = browser.new_context(user_agent="Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X)")
             page = context.new_page()
             page.goto(job_url, timeout=20000)
-            
             try:
                 page.click('button.show-more-less-html__button', timeout=2000)
             except:
                 pass
-                
             html = page.content()
             browser.close()
-        
         soup = BeautifulSoup(html, 'html.parser')
         desc_div = soup.find('div', class_='show-more-less-html__markup')
         return desc_div.text.strip() if desc_div else ""
@@ -115,83 +109,111 @@ def scrape_job_description(job_url):
         return ""
 
 def extract_min_salary(salary_str):
-    """Attempts to pull a numeric baseline from string formats like '$120,000'"""
     numbers = re.findall(r'\b\d{1,3}(?:,\d{3})*\b', salary_str)
     if numbers:
         return int(numbers[0].replace(',', ''))
     return 0
 
-# --- UI Layout & Custom Styling ---
+# --- Mobile UI Layout Configuration ---
 
-st.set_page_config(page_title="LinkedIn Premium Job Hunter", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Job Hunter Mobile", layout="wide", initial_sidebar_state="collapsed")
 
+# Inject Custom Mobile Styles WITH COPY/PASTE SUPPORT ENABLED
 st.markdown("""
     <style>
-    .main .block-container {padding-top: 2rem;}
-    div.stButton > button:first-child {
-        background-color: #0066cc; color: white; border-radius: 8px; width: 100%; font-weight: bold;
+    /* CRITICAL: Enforce selectability across the mobile layout */
+    * {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+        -moz-user-select: text !important;
+        -ms-user-select: text !important;
     }
+    .main .block-container { padding-top: 1rem; padding-left: 0.8rem; padding-right: 0.8rem; }
+    div.stButton > button:first-child {
+        background-color: #0066cc; color: white; border-radius: 12px; 
+        width: 100%; font-size: 18px; padding: 12px; font-weight: bold; height: 50px;
+    }
+    .mobile-card {
+        background-color: #1e222b; border: 1px solid #2d3139; padding: 16px; 
+        border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .mobile-title { color: #ffffff; font-size: 18px; font-weight: bold; margin-bottom: 4px; }
+    .mobile-company { color: #a0aec0; font-size: 15px; margin-bottom: 8px; }
+    .mobile-salary { display: inline-block; background-color: #2d3748; color: #63b3ed; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-right: 5px; }
+    .mobile-badge { display: inline-block; background-color: #2b6cb0; color: #ebf8ff; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: 500; }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🎯 Premium LinkedIn Job Pipeline")
-st.caption("Deep-scans large listings datasets and streams approved items to your screen in real time.")
+st.title("📱 LinkedIn Job Pipeline")
+st.caption("Fully adaptive mobile scanner layout with advanced keyword & workplace flexibility logic.")
 st.write("---")
 
-# --- Sidebar Inputs ---
-st.sidebar.header("📋 Target Parameters")
-job_query = st.sidebar.text_input("Job Title / Key Term", "Python Developer")
-location = st.sidebar.text_input("Location / Country", "India")
+# --- Form Fields Placed Directly in Main Page via Expanders ---
+with st.expander("⚙️ Adjust Search Parameters & Rules", expanded=True):
+    job_query = st.text_input("Job Title / Key Term", "Python Developer")
+    location = st.text_input("Location / Country", "India")
+    
+    st.write("---")
+    st.markdown("**🏡 Workplace Settings**")
+    filter_remote = st.checkbox("Require Remote Roles", value=False)
+    
+    st.markdown("**⏰ Job Commitment Type**")
+    filter_fulltime = st.checkbox("Require Full-Time roles", value=False)
+    filter_parttime = st.checkbox("Require Part-Time roles", value=False)
+    
+    st.write("---")
+    enable_salary = st.checkbox("Filter by Minimum Salary", value=False)
+    if enable_salary:
+        min_salary_input = st.number_input("Minimum Base Salary ($)", value=80000, step=5000)
+    else:
+        min_salary_input = 0
+        
+    required_keywords = st.text_input("Other Required Keywords (comma separated)", "")
 
-st.sidebar.subheader("🔍 Deep Filtering Rules")
+st.write("")
 
-enable_salary = st.sidebar.checkbox("Filter by Minimum Salary", value=False)
-if enable_salary:
-    min_salary_input = st.sidebar.number_input("Minimum Base Salary ($)", value=80000, step=5000)
-else:
-    min_salary_input = 0
-
-required_keywords = st.sidebar.text_input("Required Description Keywords (comma separated)", "Bank")
-
-# --- Processing Execution Pipeline ---
-if st.sidebar.button("Launch Pipeline Search"):
+# --- Launch Button Execution Framework ---
+if st.button("🚀 Launch Pipeline Search"):
     
     col1, col2, col3 = st.columns(3)
     with col1:
         stat_discovered = st.empty()
-        stat_discovered.metric("Discovered Raw Postings", "0")
+        stat_discovered.metric("Discovered", "0")
     with col2:
         stat_scanned = st.empty()
-        stat_scanned.metric("Current Progress", "0 / 0")
+        stat_scanned.metric("Scanned", "0")
     with col3:
         stat_matched = st.empty()
-        stat_matched.metric("Matched Criteria", "0", delta="0 updates")
+        stat_matched.metric("Matched", "0")
 
     status_message = st.empty()
     progress_bar = st.progress(0)
     
-    status_message.info("🌐 Fetching deep job board index from LinkedIn public endpoints...")
-    raw_jobs = scrape_linkedin_jobs(job_query, location)
+    status_message.info("🌐 Indexing public job layers... This can take 10-15 seconds.")
+    raw_jobs = scrape_linkedin_jobs(job_query, location, force_remote=filter_remote)
     total_raw = len(raw_jobs)
     
     if total_raw == 0:
-        status_message.error("🚨 Zero jobs found or LinkedIn blocked the request packet. Try adjusting your search keywords.")
+        status_message.error("🚨 Zero jobs matched. Adjust parameters or keywords.")
     else:
-        stat_discovered.metric("Discovered Raw Postings", f"{total_raw}")
-        status_message.success(f"Successfully cached {total_raw} jobs! Launching deep analysis framework...")
+        stat_discovered.metric("Discovered", f"{total_raw}")
+        status_message.success(f"Processing matches out of {total_raw} items...")
         
-        st.subheader("🚀 Live Streaming Matches")
+        st.subheader("🎯 Matches Found")
+        
         table_placeholder = st.empty()
+        cards_placeholder = st.container()
         
         filtered_jobs = []
         
         for idx, job in enumerate(raw_jobs):
             current_num = idx + 1
             
-            status_message.text(f"⏳ Currently Analyzing ({current_num}/{total_raw}): {job['Title']} at {job['Company']}")
-            stat_scanned.metric("Current Progress", f"{current_num} / {total_raw}")
+            status_message.text(f"⏳ Tracking {current_num}/{total_raw}: {job['Title']}")
+            stat_scanned.metric("Scanned", f"{current_num}")
             progress_bar.progress(current_num / total_raw)
             
+            # --- FILTER A: SALARY CHECK ---
             salary_passes = True
             estimated_salary = extract_min_salary(job['Raw_Salary'])
             if enable_salary:
@@ -200,36 +222,66 @@ if st.sidebar.button("Launch Pipeline Search"):
                 elif estimated_salary == 0:
                     salary_passes = False
 
+            # Fetch deep description if Salary check passes
             keywords_matched = True
             if salary_passes:  
                 description = scrape_job_description(job['Link'])
-                if required_keywords:
+                searchable_text = (job['Title'] + " " + description).lower()
+                
+                # --- FILTER B: WORKPLACE REMOTE CHECK ---
+                if filter_remote:
+                    # Scans text and listings for common variants of remote work definitions
+                    remote_terms = ["remote", "wfh", "work from home", "work-from-home", "telecommute"]
+                    if not any(term in searchable_text for term in remote_terms):
+                        keywords_matched = False
+                
+                # --- FILTER C: COMMITMENT TYPE CHECK ---
+                if keywords_matched and (filter_fulltime or filter_parttime):
+                    type_match = False
+                    if filter_fulltime and any(term in searchable_text for term in ["full time", "full-time", "permanent"]):
+                        type_match = True
+                    if filter_parttime and any(term in searchable_text for term in ["part time", "part-time", "contractor", "internship"]):
+                        type_match = True
+                    
+                    if not type_match:
+                        keywords_matched = False
+                        
+                # --- FILTER D: EXTRA CUSTOM SIDEBAR KEYWORDS ---
+                if keywords_matched and required_keywords:
                     kw_list = [k.strip().lower() for k in required_keywords.split(",")]
                     for kw in kw_list:
-                        if kw == "remote":
-                            if not any(x in description.lower() or x in job['Title'].lower() for x in ["remote", "wfh", "work from home", "flexible"]):
-                                keywords_matched = False
-                                break
-                        else:
-                            if kw not in description.lower() and kw not in job['Title'].lower():
-                                keywords_matched = False
-                                break
+                        if kw not in searchable_text:
+                            keywords_matched = False
+                            break
             else:
                 keywords_matched = False
 
+            # Render logic upon validation match
             if salary_passes and keywords_matched:
                 filtered_jobs.append({
                     "Job Title": job['Title'],
-                    "Company / Enterprise": job['Company'],
-                    "Salary Listed": job['Raw_Salary'],
-                    "Application Link": job['Link']
+                    "Company": job['Company'],
+                    "Salary": job['Raw_Salary'],
+                    "Link": job['Link']
                 })
                 
                 df_display = pd.DataFrame(filtered_jobs)
                 table_placeholder.dataframe(df_display, use_container_width=True)
-                stat_matched.metric("Matched Criteria", f"{len(filtered_jobs)}", delta=f"+{len(filtered_jobs)} Approved")
+                stat_matched.metric("Matched", f"{len(filtered_jobs)}")
+                
+                # Render clean, selectable HTML mobile UI block card layout on screen
+                with cards_placeholder:
+                    st.markdown(f"""
+                        <div class="mobile-card">
+                            <div class="mobile-title">{job['Title']}</div>
+                            <div class="mobile-company">🏢 {job['Company']}</div>
+                            <div class="mobile-salary">💵 Salary: {job['Raw_Salary']}</div>
+                        </div>
+                    """, unsafe_allow_html=True)
+                    st.link_button("👉 Direct Apply Link", job['Link'], use_container_width=True)
+                    st.write("") 
 
             time.sleep(1.2)
             
-        status_message.success(f"📊 Extraction Complete! Processed {total_raw} targets. Found {len(filtered_jobs)} perfect matches.")
+        status_message.success(f"📊 Extraction Complete! Found {len(filtered_jobs)} matches.")
         st.balloons()
