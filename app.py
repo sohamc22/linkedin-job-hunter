@@ -25,8 +25,6 @@ from bs4 import BeautifulSoup
 
 def scrape_linkedin_jobs(query, location, force_remote=False):
     jobs = []
-    
-    # If the user checked "Remote", we append it straight to the main search string to help LinkedIn filter early
     final_query = query
     if force_remote and "remote" not in query.lower():
         final_query += " remote"
@@ -114,52 +112,91 @@ def extract_min_salary(salary_str):
         return int(numbers[0].replace(',', ''))
     return 0
 
-# --- Mobile UI Layout Configuration ---
+# --- UI Layout Configuration ---
 
-st.set_page_config(page_title="Job Hunter Mobile", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="CJP Job Pipeline", layout="wide", initial_sidebar_state="collapsed")
 
-# Inject Custom Mobile Styles WITH COPY/PASTE SUPPORT ENABLED
+# Inject CJP Viral Neo-Brutalist Theme Styling Rules
 st.markdown("""
     <style>
-    /* CRITICAL: Enforce selectability across the mobile layout */
+    /* Global Selectable Text Rule */
     * {
         user-select: text !important;
         -webkit-user-select: text !important;
         -moz-user-select: text !important;
-        -ms-user-select: text !important;
     }
-    .main .block-container { padding-top: 1rem; padding-left: 0.8rem; padding-right: 0.8rem; }
+    
+    /* Background Canvas and Typography Adjustments */
+    .main .block-container { 
+        padding-top: 1.5rem; padding-left: 0.8rem; padding-right: 0.8rem; 
+        background-color: #0b0f17;
+    }
+    
+    /* High-Contrast Action Button Layout */
     div.stButton > button:first-child {
-        background-color: #0066cc; color: white; border-radius: 12px; 
-        width: 100%; font-size: 18px; padding: 12px; font-weight: bold; height: 50px;
+        background: linear-gradient(135deg, #ff9933 0%, #ff6600 100%);
+        color: #000000 !important; 
+        border: 2px solid #ff9933;
+        border-radius: 12px; 
+        width: 100%; font-size: 18px; padding: 12px; font-weight: 900; height: 52px;
+        box-shadow: 0px 4px 15px rgba(255, 153, 51, 0.3);
+        text-transform: uppercase;
+        letter-spacing: 1px;
     }
-    .mobile-card {
-        background-color: #1e222b; border: 1px solid #2d3139; padding: 16px; 
-        border-radius: 12px; margin-bottom: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    div.stButton > button:first-child:hover {
+        background: #ff6600;
+        border-color: #ff6600;
     }
-    .mobile-title { color: #ffffff; font-size: 18px; font-weight: bold; margin-bottom: 4px; }
-    .mobile-company { color: #a0aec0; font-size: 15px; margin-bottom: 8px; }
-    .mobile-salary { display: inline-block; background-color: #2d3748; color: #63b3ed; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: 500; margin-right: 5px; }
-    .mobile-badge { display: inline-block; background-color: #2b6cb0; color: #ebf8ff; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: 500; }
+    
+    /* Apply Link Buttons Styling Overrides */
+    div[data-testid="stLinkButton"] > a {
+        background-color: transparent !important;
+        color: #ff9933 !important;
+        border: 2px solid #ff9933 !important;
+        border-radius: 10px !important;
+        font-weight: bold !important;
+    }
+    
+    /* CJP Premium Card Architecture */
+    .cjp-card {
+        background-color: #161c2a; 
+        border: 2px solid #232d42; 
+        border-left: 6px solid #ff9933;
+        padding: 20px; 
+        border-radius: 14px; 
+        margin-bottom: 16px; 
+        box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+    }
+    .cjp-title { color: #ffffff; font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+    .cjp-company { color: #9cb3c9; font-size: 16px; margin-bottom: 12px; font-weight: 500; }
+    .cjp-salary { display: inline-block; background-color: rgba(255,153,51,0.1); color: #ff9933; padding: 6px 12px; border-radius: 8px; font-size: 14px; font-weight: bold; border: 1px solid rgba(255,153,51,0.2); }
+    
+    /* Input Container Styling Overrides */
+    .stExpander {
+        background-color: #161c2a !important;
+        border: 2px solid #232d42 !important;
+        border-radius: 14px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("📱 LinkedIn Job Pipeline")
-st.caption("Fully adaptive mobile scanner layout with advanced keyword & workplace flexibility logic.")
+# High-Impact Branding Headers
+st.markdown("<h1 style='color: #ffffff; font-weight: 900; font-size: 2.5rem; margin-bottom: 0px;'>🪳 CJP JOB PIPELINE</h1>", unsafe_allow_html=True)
+st.markdown("<p style='color: #ff9933; font-weight: bold; font-size: 1.1rem; margin-top: 5px; margin-bottom: 20px;'>Voice of the Lazy & Unemployed — Searching Smarter.</p>", unsafe_allow_html=True)
 st.write("---")
 
-# --- Form Fields Placed Directly in Main Page via Expanders ---
-with st.expander("⚙️ Adjust Search Parameters & Rules", expanded=True):
+# --- Parameters Interface Dropdown ---
+with st.expander("🛠️ CONFIGURE FILTER PIPELINE", expanded=True):
     job_query = st.text_input("Job Title / Key Term", "Python Developer")
     location = st.text_input("Location / Country", "India")
     
     st.write("---")
-    st.markdown("**🏡 Workplace Settings**")
+    st.markdown("<p style='color: #ff9933; font-weight: bold;'>⚡ Workplace Settings</p>", unsafe_allow_html=True)
     filter_remote = st.checkbox("Require Remote Roles", value=False)
     
-    st.markdown("**⏰ Job Commitment Type**")
-    filter_fulltime = st.checkbox("Require Full-Time roles", value=False)
-    filter_parttime = st.checkbox("Require Part-Time roles", value=False)
+    st.markdown("<p style='color: #ff9933; font-weight: bold;'>⏳ Commitment Scope</p>", unsafe_allow_html=True)
+    filter_fulltime = st.checkbox("Require Full-Time Roles", value=False)
+    filter_parttime = st.checkbox("Require Part-Time Roles", value=False)
     
     st.write("---")
     enable_salary = st.checkbox("Filter by Minimum Salary", value=False)
@@ -172,8 +209,8 @@ with st.expander("⚙️ Adjust Search Parameters & Rules", expanded=True):
 
 st.write("")
 
-# --- Launch Button Execution Framework ---
-if st.button("🚀 Launch Pipeline Search"):
+# --- Core Pipeline Processing Engine ---
+if st.button("Run Pipeline Search"):
     
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -213,7 +250,6 @@ if st.button("🚀 Launch Pipeline Search"):
             stat_scanned.metric("Scanned", f"{current_num}")
             progress_bar.progress(current_num / total_raw)
             
-            # --- FILTER A: SALARY CHECK ---
             salary_passes = True
             estimated_salary = extract_min_salary(job['Raw_Salary'])
             if enable_salary:
@@ -222,20 +258,16 @@ if st.button("🚀 Launch Pipeline Search"):
                 elif estimated_salary == 0:
                     salary_passes = False
 
-            # Fetch deep description if Salary check passes
             keywords_matched = True
             if salary_passes:  
                 description = scrape_job_description(job['Link'])
                 searchable_text = (job['Title'] + " " + description).lower()
                 
-                # --- FILTER B: WORKPLACE REMOTE CHECK ---
                 if filter_remote:
-                    # Scans text and listings for common variants of remote work definitions
                     remote_terms = ["remote", "wfh", "work from home", "work-from-home", "telecommute"]
                     if not any(term in searchable_text for term in remote_terms):
                         keywords_matched = False
                 
-                # --- FILTER C: COMMITMENT TYPE CHECK ---
                 if keywords_matched and (filter_fulltime or filter_parttime):
                     type_match = False
                     if filter_fulltime and any(term in searchable_text for term in ["full time", "full-time", "permanent"]):
@@ -246,7 +278,6 @@ if st.button("🚀 Launch Pipeline Search"):
                     if not type_match:
                         keywords_matched = False
                         
-                # --- FILTER D: EXTRA CUSTOM SIDEBAR KEYWORDS ---
                 if keywords_matched and required_keywords:
                     kw_list = [k.strip().lower() for k in required_keywords.split(",")]
                     for kw in kw_list:
@@ -256,7 +287,6 @@ if st.button("🚀 Launch Pipeline Search"):
             else:
                 keywords_matched = False
 
-            # Render logic upon validation match
             if salary_passes and keywords_matched:
                 filtered_jobs.append({
                     "Job Title": job['Title'],
@@ -269,16 +299,16 @@ if st.button("🚀 Launch Pipeline Search"):
                 table_placeholder.dataframe(df_display, use_container_width=True)
                 stat_matched.metric("Matched", f"{len(filtered_jobs)}")
                 
-                # Render clean, selectable HTML mobile UI block card layout on screen
+                # Render selectable custom CJP UI component template card layouts
                 with cards_placeholder:
                     st.markdown(f"""
-                        <div class="mobile-card">
-                            <div class="mobile-title">{job['Title']}</div>
-                            <div class="mobile-company">🏢 {job['Company']}</div>
-                            <div class="mobile-salary">💵 Salary: {job['Raw_Salary']}</div>
+                        <div class="cjp-card">
+                            <div class="cjp-title">{job['Title']}</div>
+                            <div class="cjp-company">🏢 {job['Company']}</div>
+                            <div class="cjp-salary">💵 Salary: {job['Raw_Salary']}</div>
                         </div>
                     """, unsafe_allow_html=True)
-                    st.link_button("👉 Direct Apply Link", job['Link'], use_container_width=True)
+                    st.link_button("👉 Launch Application", job['Link'], use_container_width=True)
                     st.write("") 
 
             time.sleep(1.2)
