@@ -1,4 +1,22 @@
+import os
+import subprocess
 import streamlit as st
+
+# --- CLOUD INITIALIZATION: Auto-installs browser binaries on Streamlit Cloud Linux servers ---
+@st.cache_resource
+def initialize_cloud_browsers():
+    try:
+        # Detect if the app is executing inside the Streamlit Cloud Linux environment
+        if os.environ.get("STREAMLIT_SERVER_PORT") or os.path.exists("/home/adminuser"):
+            subprocess.run(["playwright", "install", "chromium"], check=True)
+            subprocess.run(["playwright", "install-deps"], check=True)
+    except Exception as e:
+        pass
+
+# Fire browser engine compiler configuration
+initialize_cloud_browsers()
+
+# --- Core Dependencies ---
 import pandas as pd
 import time
 import re
@@ -22,12 +40,11 @@ def scrape_linkedin_jobs(query, location):
             page.goto(url, timeout=45000)
             
             # --- EXTENDED SCROLLING LOGIC ---
-            # Loops 6 times, scrolling to trigger infinite data loading layers
             for i in range(6): 
                 page.evaluate("window.scrollTo(0, document.body.scrollHeight);")
                 time.sleep(2) 
                 
-                # Clicks the public "See more jobs" button if it appears
+                # Automatically clicks the public infinite scroll page button
                 try:
                     see_more_button = page.locator("button.infinite-scroller__button")
                     if see_more_button.is_visible():
@@ -108,7 +125,6 @@ def extract_min_salary(salary_str):
 
 st.set_page_config(page_title="LinkedIn Premium Job Hunter", layout="wide", initial_sidebar_state="expanded")
 
-# Custom UI Dark Theme Enhancements
 st.markdown("""
     <style>
     .main .block-container {padding-top: 2rem;}
@@ -129,7 +145,6 @@ location = st.sidebar.text_input("Location / Country", "India")
 
 st.sidebar.subheader("🔍 Deep Filtering Rules")
 
-# SALARY CONSTRAINT: Turning this off bypasses mandatory salary filters!
 enable_salary = st.sidebar.checkbox("Filter by Minimum Salary", value=False)
 if enable_salary:
     min_salary_input = st.sidebar.number_input("Minimum Base Salary ($)", value=80000, step=5000)
@@ -141,7 +156,6 @@ required_keywords = st.sidebar.text_input("Required Description Keywords (comma 
 # --- Processing Execution Pipeline ---
 if st.sidebar.button("Launch Pipeline Search"):
     
-    # Clean Dashboard Metric Displays
     col1, col2, col3 = st.columns(3)
     with col1:
         stat_discovered = st.empty()
@@ -166,22 +180,18 @@ if st.sidebar.button("Launch Pipeline Search"):
         stat_discovered.metric("Discovered Raw Postings", f"{total_raw}")
         status_message.success(f"Successfully cached {total_raw} jobs! Launching deep analysis framework...")
         
-        # Stream window layout container
         st.subheader("🚀 Live Streaming Matches")
         table_placeholder = st.empty()
         
         filtered_jobs = []
         
-        # Main processing streaming engine loop
         for idx, job in enumerate(raw_jobs):
             current_num = idx + 1
             
-            # Clean real-time tracking line
             status_message.text(f"⏳ Currently Analyzing ({current_num}/{total_raw}): {job['Title']} at {job['Company']}")
             stat_scanned.metric("Current Progress", f"{current_num} / {total_raw}")
             progress_bar.progress(current_num / total_raw)
             
-            # Rule Evaluation A: Salary Constraint Check
             salary_passes = True
             estimated_salary = extract_min_salary(job['Raw_Salary'])
             if enable_salary:
@@ -190,20 +200,23 @@ if st.sidebar.button("Launch Pipeline Search"):
                 elif estimated_salary == 0:
                     salary_passes = False
 
-            # Rule Evaluation B: Deep Text Parsing
             keywords_matched = True
             if salary_passes:  
                 description = scrape_job_description(job['Link'])
                 if required_keywords:
                     kw_list = [k.strip().lower() for k in required_keywords.split(",")]
                     for kw in kw_list:
-                        if kw not in description.lower() and kw not in job['Title'].lower():
-                            keywords_matched = False
-                            break
+                        if kw == "remote":
+                            if not any(x in description.lower() or x in job['Title'].lower() for x in ["remote", "wfh", "work from home", "flexible"]):
+                                keywords_matched = False
+                                break
+                        else:
+                            if kw not in description.lower() and kw not in job['Title'].lower():
+                                keywords_matched = False
+                                break
             else:
                 keywords_matched = False
 
-            # Live render matching items immediately 
             if salary_passes and keywords_matched:
                 filtered_jobs.append({
                     "Job Title": job['Title'],
@@ -212,12 +225,10 @@ if st.sidebar.button("Launch Pipeline Search"):
                     "Application Link": job['Link']
                 })
                 
-                # Update visual spreadsheet component instantly
                 df_display = pd.DataFrame(filtered_jobs)
                 table_placeholder.dataframe(df_display, use_container_width=True)
                 stat_matched.metric("Matched Criteria", f"{len(filtered_jobs)}", delta=f"+{len(filtered_jobs)} Approved")
 
-            # Politeness buffer pause
             time.sleep(1.2)
             
         status_message.success(f"📊 Extraction Complete! Processed {total_raw} targets. Found {len(filtered_jobs)} perfect matches.")
